@@ -21,7 +21,6 @@ const webLinkSchema = new mongoose.Schema({
 		type: String,
 		required: [true, 'URL is required'],
 		trim: true,
-		set: v => {if (v.startsWith(AWS_BUCKET)) return'S3'}
 	},
 	category: {
 		type: String,
@@ -29,10 +28,6 @@ const webLinkSchema = new mongoose.Schema({
 		required: false,
 		default: 'website'
 	},
-	get: v => {
-		if (v.url==='S3') v.url = `${AWS_BUCKET}/${v.name}`;
-		return v;
-	}
 }, { timestamps: true });
 
 

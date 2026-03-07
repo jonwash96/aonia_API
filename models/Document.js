@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const referenceSchema = require('./Reference');
+const { referenceSchema } = require('./Reference');
 
 
 
@@ -32,7 +32,7 @@ const documentSchema = new mongoose.Schema({
 		autopopulate: true
 	}],
 	references: [referenceSchema],
-	Config: new mongoose.Schema({
+	config: new mongoose.Schema({
 		custom: Object,
 		language: {
 			type: String,
@@ -48,4 +48,6 @@ documentSchema.pre('validate', function() {
 	if (!this.name) this.name = this.title.replace(/\s/g, '-')
 });
 
-module.exports = mongoose.model('Document', documentSchema)
+const Document = mongoose.model('Document', documentSchema);
+
+module.exports = { Document, documentSchema }

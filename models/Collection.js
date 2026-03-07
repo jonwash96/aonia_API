@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { commentSchema } = require('./Comment');
 
 
 
@@ -9,11 +10,11 @@ const collectionSchema = new mongoose.Schema({
 	},
 	details: {
 		type: String,
-		required: true,
+		required: false,
 	},
 	type: {
 		type: String,
-		enum: ['photo', 'other'],
+		enum: ['my-photos', 'photo', 'other'],
 		default: 'photo',
 	},
 	ownerID: {
@@ -26,9 +27,16 @@ const collectionSchema = new mongoose.Schema({
 		ref: 'User',
 		required: [true, 'User is required']
 	}],
-	parent: mongoose.Schema.Types.ObjectId,
-	children: [commentSchema],
-	Config: new mongoose.Schema({
+	parent: {
+		type: mongoose.Schema.Types.ObjectId,
+		ref: 'Collection'
+	},
+	children: {
+		type: mongoose.Schema.Types.ObjectId,
+		ref: 'Collection'
+	},
+	comments: [commentSchema],
+	config: new mongoose.Schema({
 		custom: Object
 	}),
 	files: [{

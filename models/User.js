@@ -4,19 +4,19 @@ const dpp_male = {path: '/svg/default-profile-photo_male.svg', id: process.env.D
 const dpp_female = {path: '/svg/default-profile-photo_female.svg', id: process.env.DEFAULT_PROFILE_PHOTO_FEMALE};
 const dpp_andro = {path: '/svg/default-profile-photo_androgynous.svg', id: process.env.DEFAULT_PROFILE_PHOTO_ANDROGYNOUS};
 
-console.log("defaultProfilePhoto_male".toUpperCase())
+
 
 const userProfileSchema = new mongoose.Schema({
     userID: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: User,
+        ref: 'User',
         required: true,
     },
     username: { 
         type: String, 
         required: true,
         unique: true,
-        set: v => v.trim().toLowercase(),
+        set: v => v.trim().toLowerCase(),
         maxLength: [22, "Usernames must be 22 characters or less"]
     },
     displayname: { 
@@ -25,24 +25,27 @@ const userProfileSchema = new mongoose.Schema({
     },
     photo: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: webLinkSchema,
-        required: false,
-        autopopulate: true,
-        default: dpp_male.id || {
-            title: 'Default Profile Photo',
-            name: 'default-profile-photo',
-            url: dpp_male.path,
-            category: 'photo'
-        }
+        ref: 'WebLink',
+        required: false
     },
-    Info: new mongoose.Schema({
+    friends: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'UserProfile'
+    }],
+    info: new mongoose.Schema({
         bio: {
             type: String,
             maxLength: 500
         },
+        gender: {
+            type: String,
+            enum: ['Male', 'Female', 'Androgynous', 'Other', 'Decline'],
+            required: true,
+            default: 'Decline'
+        },
         privacy: {
             type: String,
-            enum: ['private', 'friends', 'public'],
+            enum: ['private', 'hidden', 'friends', 'public'],
             default: 'private'
         }
     })
@@ -55,7 +58,7 @@ const userSchema = new mongoose.Schema({
         type: String, 
         required: true,
         unique: true,
-        set: v => v.trim().toLowercase(),
+        set: v => v.trim().toLowerCase(),
         maxLength: [22, "Usernames must be 22 characters or less"]
     },
     displayname: { 
@@ -68,21 +71,46 @@ const userSchema = new mongoose.Schema({
         select: false
     },
     profile: {
-        type: mongoose.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'UserProfile',
         required: true,
+        autopopulate: true
     },
     activity: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Activity',
-        required: false,
     }],
     notifications: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Notification',
-        required: false,
     }],
-    Settings: new mongoose.Schema({
+    chats: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Chat',
+    }],
+    myPhotos: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Collection',
+        autopopulate: true
+    },
+    events: [new mongoose.Schema({
+        title: {
+            type: String,
+            required: true
+        },
+        details: Object
+    })],
+    notebook: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Notebook',
+        autopopulate: true
+    },
+    gear: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Item'
+    }],
+    data: Object,
+    settings: new mongoose.Schema({
         theme: {
             type: String,
             enum: ['light', 'dark', 'pitch', 'red', 'default', 'client'],
@@ -94,10 +122,10 @@ const userSchema = new mongoose.Schema({
 
 
 userSchema.pre('validate', function () {
-    if (!this.displayname) this.displayname = this.username;
+    if (this.isNew && !this.displayname) this.displayname = this.username;
 });
 userProfileSchema.pre('validate', function () {
-    if (!this.displayname) this.displayname = this.username;
+    if (this.isNew && !this.displayname) this.displayname = this.username;
 });
 
 const User = mongoose.model('User', userSchema);

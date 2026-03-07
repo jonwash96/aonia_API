@@ -27,7 +27,12 @@ const itemSchema = new mongoose.Schema({
 		type: mongoose.Schema.Types.ObjectId,
 		ref: 'WebLink',
 		required: false,
-	}]
+	}],
+	verified: {
+		type: Boolean,
+		required: false,
+		default: false
+	}
 }, { timestamps: true });
 
 

@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
-const referenceSchema = require('./Reference');
+const { referenceSchema } = require('./Reference');
 
 
 
-const commentSchema = new mongoose.Schema({
+const commentTemplate = {
 	ownerID: {
 		type: mongoose.Schema.Types.ObjectId,
 		ref: 'User',
@@ -22,9 +22,16 @@ const commentSchema = new mongoose.Schema({
 	references: [referenceSchema],
 	topic: mongoose.Schema.Types.ObjectId,
 	parent: mongoose.Schema.Types.ObjectId,
-	children: [commentSchema],
+};
+
+
+const commentSchema = new mongoose.Schema({
+	...commentTemplate,
+	children: [commentTemplate]
 }, { timestamps: true });
 
 
 
-module.exports = mongoose.model('Comment', commentSchema)
+const Comment = mongoose.model('Comment', commentSchema);
+
+module.exports = { Comment, commentSchema }

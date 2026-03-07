@@ -12,7 +12,7 @@ const activitySchema = new mongoose.Schema({
 		type: String,
 		required: true,
 		enum: [
-			'login', 'logout', 
+			'login', 'logout', 'register',
 			'create', 'create-collection', 'upload-photo',
 			'update',
 			'delete',
