@@ -16,11 +16,19 @@ const activitySchema = new mongoose.Schema({
 			'create', 'create-collection', 'upload-photo',
 			'update',
 			'delete',
-			'add-friend'
+			'friend-request'
 		]
 	},
 	description: {
 		type: String,
+		required: false,
+		trim: true
+	},
+	status: {
+		type: String,
+		enum: [
+			'pending', 'accepted', 'declined', 'done'
+		],
 		required: false,
 		trim: true
 	},

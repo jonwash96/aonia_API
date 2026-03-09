@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
+require('dotenv').config();
 
-const admins = process.env.ADMINS || [];
-
+const admins = JSON.parse(process.env.ADMINS) || [];
 module.exports = function requireAuth(req, res, next) {
     try {
         const authHeader = req.headers.authorization || "";

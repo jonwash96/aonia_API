@@ -78,7 +78,7 @@ router.patch('/spawn', async (req,res) => {
 
 router.get('/users', async function admin_indexUsers(req, res) {
 	try {
-		const users = await User.find({});
+		const users = await User.find({}).populate('profile');
 		return res
 			.status(200)
 			.json(users)

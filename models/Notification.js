@@ -33,6 +33,11 @@ const notificationSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Activity',
         required: false,
+    },
+    ownerID: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
     }
 }, { timestamps: true });
 

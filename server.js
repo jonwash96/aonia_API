@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth')
 const userRoutes = require('./routes/users.js');
 const adminController = require('./controllers/admin');
 const chatRoutes = require('./routes/chat');
+const serviceRoutes = require('./services/signMeteoblueKey');
 
 
 
@@ -30,10 +31,10 @@ app.get("/", (req, res) => {
 	});
 });
 
-app.use('/test-jwt', testAuthRoutes);
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/chat', chatRoutes);
+app.use('/services', serviceRoutes)
 app.use('/admin', adminController);
 
 

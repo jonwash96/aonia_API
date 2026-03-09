@@ -15,7 +15,7 @@ const saltRounds = 12;
 
 async function register(req, res) {
 	try {
-		const { username, password, displayname, email } = req.body;
+		const { username, password, displayname } = req.body;
 
 		if (!username?.trim() || !password) {
 			return res
@@ -53,7 +53,8 @@ async function register(req, res) {
 			description: "Click here to set up your profile",
 			action: '/profile/edit',
 			priority: 3,
-			activityID: newUserActivityID
+			activityID: newUserActivityID,
+			ownerID: newUserID
 		});
 		welcomeNotification.save();
 
@@ -83,12 +84,37 @@ async function register(req, res) {
 		});
 		newNotebook.save();
 
+		let astramuse = await User.find({ username: 'astramuse' });
+		if (!astramuse) {
+			let botProfile = new UserProfile({
+				_id: new mongoose.Types.ObjectId('69addfabb7089588afdbd825'),
+				userID: new mongoose.Types.ObjectId('69addfabb7089588afdbd824'),
+				username: 'astramuse',
+				displayname: 'Astra Muse',
+				photo: profilePhoto,
+			});
+			await botProfile.save();
+	
+			let astramuse = new User({
+				_id: botProfile.userID,
+				username: 'astramuse',
+				displayname: 'Astra Muse',
+				password: process.env.ASTRAMUSE_HASHED,
+				profile: botProfile._id,
+				email: 'email@example.com',
+				myPhotos: new mongoose.Types.ObjectId(),
+				notebook: new mongoose.Types.ObjectId()
+			});
+			await astramuse.save();
+		}
+
 		let userProfile = new UserProfile({
 			_id: newUserProfileID,
 			userID: newUserID,
 			username: username.trim(),
 			displayname: displayname.trim(),
 			photo: profilePhoto,
+			friends: [astramuse.profile]
 		});
 		userProfile.save();
 
@@ -98,16 +124,17 @@ async function register(req, res) {
 			displayname: displayname.trim(),
 			password: hashed,
 			profile: newUserProfileID,
-			email: email,
+			email: 'example@example.com',
 			notifications: [welcomeNotificationID],
 			activity: [newUserActivityID],
 			myPhotos: newPhotoCollectionID,
 			notebook: newNotebookID
 		});
 		user = await user.save();
-		await user.populate('notifications activity events')
-			.populate({path: 'profile', populate: {path: 'photo'}})
-			.populate({path: 'profile', populate: {path: 'friends'}});
+		await user.populate(['notifications', 'activity', 'events',
+			{ path: 'profile', populate: {path: 'photo'} },
+			{ path: 'profile', populate: {path: 'friends'} }
+		]);
 
 		const token = signToken({ _id: user._id, username: user.username });
 		return res
@@ -115,7 +142,7 @@ async function register(req, res) {
 			.json({ token, user });
 
 	} catch (error) {
-		console.error(error)
+		console.error(error);
 		return res
 			.status(500)
 			.json({ error: error.message || "Server error" });
