@@ -12,7 +12,7 @@ Version 0.1.0 features hourly weather info and a map, to keep you informed about
 Aonia is a MERN stack app with a RESTful API back end. Several API's are implemented into version 0.1.0, and several more are being implemented to provide the best user experience possible.
 
 
-![App Screenshot[(./public/screenshot.png)]]
+![App Screenshot](./screenshot.png)
 
 
 ## Getting Started
