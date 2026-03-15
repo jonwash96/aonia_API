@@ -6,7 +6,8 @@ let chatSpawn;
 const hibernateChatSpawn = () => chatSpawn = null;
 const BACK_END_URL = process.env.BACK_END_URL;
 const CHAT_PORT = process.env.CHAT_PORT;
-const { User } = require('../models/User');
+const { User, UserProfile } = require('../models/User');
+const Chat = require('../models/Chat');
 
 
 
@@ -36,32 +37,59 @@ async function handleSpawnStatus(req, res) {
 }
 
 
-//* router.post('/retrieve',
+//* GET '/:userID'
 async function retrieveChats(req, res, serviceType) {
 	try {
 		const userID = serviceType.api
-			? req.body.user._id
+			? req.params.userID
 			: req;
 
-		const user = await User.findById(userID).populate('chats profile.friends');
+		const user = await User.findById(userID).populate('chats');
 		if (!user) throw new Error("User not found");
 
-		result = { 
-			chats: user.chats, 
-			friends: user.profile.friends 
-		};
 		return serviceType.api
-			? res.status(200).json(result)
-			: result;
+			? res.status(200).json(user.chats)
+			: user;
 
 	} catch (error) {
 		console.error(error);
 		return serviceType.api
 			? res.status(500).json({ error: error.message })
-			: error;
+			: {error: error};
+	}
+}
+
+
+//* POST '/' 
+async function createChat(req, res, serviceType) {
+	try {
+		const body = serviceType.api
+			? req.body
+			: req;
+
+		const newChat = await Chat.create(body);
+		if (!newChat) throw new Error("Create new Chat Failed.");
+
+		for (const pid of newChat.users) {
+			const profile = await UserProfile.findById(pid);
+			await User.updateOne (
+				{ _id: profile.userID },
+				{ $push: {chats: newChat._id} }
+			)
+		};
+
+		return serviceType.api
+			? res.status(200).json(newChat)
+			: newChat;
+
+	} catch (error) {
+		console.error(error);
+		return serviceType.api
+			? res.status(500).json({ error: error.message })
+			: {error: error};
 	}
 }
 
 
 
-module.exports = { retrieveChats, handleSpawnStatus }
+module.exports = { retrieveChats, handleSpawnStatus, createChat }

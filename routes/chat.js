@@ -6,7 +6,9 @@ const chat = require('../controllers/chat');
 
 router.patch('/', requireAuth, chat.handleSpawnStatus);
 
-router.post('/retrieve', requireAuth, (req, res)=>chat.retrieveChats(req, res, {api:true}));
+router.get('/:userID', requireAuth, (req, res)=>chat.retrieveChats(req, res, {api:true}));
+
+router.post('/', requireAuth, (req, res)=>chat.createChat(req, res, {api:true}));
 
 
 

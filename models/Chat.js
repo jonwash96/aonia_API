@@ -11,7 +11,8 @@ const chatSchema = new mongoose.Schema({
 	users: [{
 		type: mongoose.Schema.Types.ObjectId,
 		ref: 'User',
-		required: [true, 'User is required']
+		required: [true, 'User is required'],
+		autopopulate: true
 	}],
 	messages: [Object]
 }, { timestamps: true });

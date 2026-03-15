@@ -13,9 +13,9 @@ const { Reference } = require('../models/Reference');
 const { WebLink } = require('../models/WebLink');
 
 const Models = {
-	User, UserProfile, Activity, Notification,
-	Chat, Collection, Notebook, Document,
-	Item, OEM, Reference, WebLink
+	User, 	UserProfile, 	Activity, 	Notification,
+	Chat, 	Collection, 	Notebook, 	Document,
+	Item, 	OEM, 			Reference, 	WebLink
 };
 
 
@@ -51,14 +51,23 @@ async function getUserData(req, res) {
 			populate = req.query.populate
 		} catch { populate = null };
 
-		switch (populate) {
-			case 'notifications': mode = 'notifications'
-			case 'all': mode = 'profile activity notifications chats photoCollection events notebook gear'; break;
-			case 'profile':
-			default: mode = 'profile notifications activity events';
+		const pop = {
+			profile: { path: 'profile', populate: [
+				{ path: 'friends', populate: { path: 'photo' }},
+				{ path: 'photo' }
+			]},
+			userContent: 'chats photoCollection notebook gear'.split(' '),
+			default: 'profile notifications activity events'.split(' ')
 		};
 
-		const user = await User.findById(req.params.userID).populate(mode);
+		switch (populate) {
+			case 'notifications': 	mode = 'notifications.activityID'; break;
+			case 'profile': 	  	mode = pop.profile; break;
+			case 'all': 			mode = [...pop.default, ...pop.userContent, pop.profile]; break;
+			default: 				mode = pop.default;
+		};
+
+		const user = await User.findById(req.params.userID).populate(mode).lean();
 
 		if (!user) {
 			res.status(404);
@@ -81,7 +90,7 @@ async function getUserData(req, res) {
 }
 
 
-// GET::/:userID/notifications
+// GET::/:userID/notifications?from=date
 async function getNotifications(req, res) {
 	try {
 		if (req.user._id !== req.params.userID && !req.user.isAdmin) {
@@ -94,9 +103,9 @@ async function getNotifications(req, res) {
 			notifications = await Notification.find({ 
 				ownerID: req.user._id, 
 				createdAt: { $gt: new Date(req.query.from) } 
-			})
+			}).populate('activityID');
 		} else {
-			notifications = await Notification.find({ ownerID: req.user._id })
+			notifications = await Notification.find({ ownerID: req.user._id }).populate('activityID');
 		}
 
 		return res
@@ -116,72 +125,55 @@ async function getNotifications(req, res) {
 async function updateUser(req, res) {
 	try {
 		if (req.user._id !== req.params.userID && !req.user.isAdmin) {
-			res.status(403);
-			throw new Error("Not Authorized");
+			return res.status(403).json({ error: "Not Authorized" });
 		}
 
-		/** The Front end creates an updateInfo object:
-		 * 		updateInfo = {
-		 * 			newProfilePhoto: true|false,
-		 * 			models: { ModelName: {updated fields + _id} }
-		 * 		} 
-		 * The client app declares the models needed to perform the update in a "models"
-		 * object, and sends only the updated properties in the body.
-		 * It also specifies certain boolean properties indicating neccesary new models
-		 * or other actions the server should take.
-		 * The Server iteratively updates all models by comparing the key to properties
-		 * in a declared Models object, which maps model names to their model. 
-		 * The loop then modifies any neccesary data via conditional statements, and
-		 * performs the update, before saving and looping to the next model. 
-		 * PROFILE PHOTO: If the photo was changed to an existing photo in the user's 
-		 * library, Then only the photo's ID will be sent as a string. */
-
 		const updateInfo = req.body;
-
 		const updateModels = {};
 
-		for (key in updateInfo.models) {
-			updateModels[key] = await Models[key].findById(updateInfo.models[key]._id);
-			if (!updateModels[key]) throw new Error(`Update Error! '${key}' Not found.`);
+		for (const modelKey in updateInfo.models) {
+			const Model = Models[modelKey];
+			if (!Model) throw new Error(`Model ${modelKey} does not exist in registry.`);
 
-			if (isObjectLiteral(updateModels[key]))
-				Object.entries(updateInfo.models[key]).forEach(([k, v]) => {
-					if (k !== '_id') updateModels[key][k] = v
-				})
-			else if (Array.isArray(updateModels[key]))
-				updateModels[key].push(...updateInfo.models[key]);
+			const data = updateInfo.models[modelKey];
+			const document = await Model.findById(data._id);
 
-			await updateModels[key].save();
-		};
+			if (!document) throw new Error(`Update Error! '${modelKey}' ID ${data._id} Not found.`);
 
-		if (newProfilePhoto in updateInfo) {
+			const { _id, ...fieldsToUpdate } = data;
+			document.set(fieldsToUpdate);
+
+			await document.save();
+			updateModels[modelKey] = document;
+		}
+
+		if (updateInfo.newProfilePhoto) {
 			try {
-				let newPhoto = new WebLink({ ...updateInfo.models.UserProfile.photo });
-				newPhoto = await newPhoto.save();
-				updateModels.UserProfile.photo = newPhoto;
-				updateModels.Collection.files.push(newPhoto);
-				updateModels.UserProfile.save();
-				updateModels.Collection.save();
-			} catch (error) {
-				console.error(error)
-				throw new Error("New Profile Photo failed.");
-			}
-		} else
+				const userProfile = updateModels.UserProfile;
+				const collection = updateModels.Collection;
 
-			if ('UserProfile' in updateModels) updateModels.User.profile = updateModels.UserProfile;
+				let newPhoto = new Models.WebLink({ ...updateInfo.photoData });
+				newPhoto = await newPhoto.save();
+
+				userProfile.photo = newPhoto._id;
+				collection.files.push(newPhoto._id);
+
+				await Promise.all([userProfile.save(), collection.save()]);
+			} catch (error) {
+				throw new Error("New Profile Photo upload failed logic.");
+			}
+		}
+
 		return res
 			.status(200)
 			.json(updateModels);
 
 	} catch (error) {
-		if (req.statusCode === 403 || req.statusCode === 404) {
-			res.json({ err: error.message });
-		} else {
-			console.error(error)
-			return res
-				.status(500)
-				.json({ error: error.message })
-		}
+		console.error("Update Loop Error:", error);
+		const status = res.statusCode >= 400 ? res.statusCode : 500;
+		return res
+			.status(status)
+			.json({ error: error.message });
 	}
 }
 
@@ -222,13 +214,16 @@ async function deleteUser(req, res) {
 
 // POST::/friends/request
 async function sendFriendRequest(req, res) {
-	try {
-		const { user_id, profile_id, requested_id, username, displayname } = req.body;
+	try { 
+		const { user_id, profile_id, requested_id, requested_username, username, displayname, method } = req.body;
 
 		const sendingUser = await User.findById(user_id).populate('activity');
-		const receivingUser = await UserProfile.findById(requested_id).populate({ path: 'userID', populate: { path: 'activity' } });
+		const receivingUser = !method || method === 'id'
+			? await UserProfile.findById(requested_id).populate({ path: 'userID', populate: { path: 'activity' } })
+			: await UserProfile.findOne({ username: requested_username.toLowerCase() })
+				.populate({ path: 'userID', populate: { path: 'activity' } });
 
-		const existing = await User.exists({
+		const existing = await User.exists({ //!
 			_id: sendingUser, activity: {
 				$elemMatch: {
 					users: profile_id,
@@ -245,11 +240,14 @@ async function sendFriendRequest(req, res) {
 
 		const requestReceivedActivity = new Activity({
 			_id: requestReceivedActivityID,
-			users: [profile_id, receivingUser._id],
+			users: [user_id, receivingUser.userID._id],
 			category: 'friend-request',
 			description: 'received new friend request from ' + username,
 			status: 'pending',
-			data: { senderActivityID: requestSentActivityID }
+			data: { 
+				senderActivityID: requestSentActivityID,
+				senderProfileID: profile_id
+			}
 		});
 		await requestReceivedActivity.save();
 
@@ -266,11 +264,14 @@ async function sendFriendRequest(req, res) {
 
 		let requestSentActivity = new Activity({
 			_id: requestSentActivityID,
-			users: [profile_id, receivingUser._id],
+			users: [user_id, receivingUser.userID._id],
 			category: 'friend-request',
 			description: 'sent new friend request to ' + receivingUser.username,
 			status: 'pending',
-			data: { recipientActivityID: requestReceivedActivityID }
+			data: { 
+				recipientActivityID: requestReceivedActivityID,
+				recipientProfileID: receivingUser._id
+			}
 		});
 		requestSentActivity = await requestSentActivity.save();
 
@@ -302,7 +303,7 @@ async function sendFriendRequest(req, res) {
 
 // PUT::/friends/request
 async function respondFriendRequest(req, res) {
-	try {
+	try { console.log("@respondFR", req.body)
 		const { user_id, username, displayname, profile_id, requestor_id, response } = req.body;
 
 		const requestor = await UserProfile.findById(requestor_id).populate('photo');

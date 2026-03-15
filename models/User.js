@@ -26,11 +26,13 @@ const userProfileSchema = new mongoose.Schema({
     photo: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'WebLink',
-        required: false
+        required: true,
+        autopopulate: true
     },
     friends: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'UserProfile'
+        ref: 'UserProfile',
+        autopopulate: true
     }],
     info: new mongoose.Schema({
         bio: {
@@ -73,8 +75,7 @@ const userSchema = new mongoose.Schema({
     profile: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'UserProfile',
-        required: true,
-        autopopulate: true
+        required: true
     },
     activity: [{
         type: mongoose.Schema.Types.ObjectId,
