@@ -11,6 +11,7 @@ const Chat = require('../models/Chat');
 
 
 
+//* PATCH '/'
 async function handleSpawnStatus(req, res) {
 	try {
 		if (!chatSpawn) {

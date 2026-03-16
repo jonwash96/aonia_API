@@ -28,7 +28,7 @@ const updateChat = (chatID, message) => {
 let helicount = 0;
 let helinil = 0;
 async function heliFlush() {
-	if (helinil === 6) process.exit();
+	if (helinil === 3000) process.exit();
 	let count = 0, count2 = 0;
 	for (const key in chatsCache) {
 		const chat = chatsCache[key];
