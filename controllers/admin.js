@@ -112,7 +112,7 @@ router.delete('/delete', async(req, res) => {
 		if (req.query.all === 'true') {
 			for (let Model in Models) {
 				result[Model] = await Models[Model].deleteMany();
-		}
+			}
 		};
 
 		return res.status(204).json(result)

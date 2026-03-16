@@ -114,7 +114,7 @@ async function register(req, res) {
 			username: username.trim(),
 			displayname: displayname.trim(),
 			photo: profilePhoto,
-			friends: [botProfile._id]
+			friends: [astramuse.profile]
 		});
 		await userProfile.save();
 
