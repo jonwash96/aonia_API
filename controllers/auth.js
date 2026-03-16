@@ -106,7 +106,7 @@ async function register(req, res) {
 				notebook: new mongoose.Types.ObjectId()
 			});
 			await astramuse.save();
-		}
+		};
 
 		let userProfile = new UserProfile({
 			_id: newUserProfileID,
@@ -114,9 +114,9 @@ async function register(req, res) {
 			username: username.trim(),
 			displayname: displayname.trim(),
 			photo: profilePhoto,
-			friends: [astramuse.profile]
+			friends: [botProfile._id]
 		});
-		userProfile.save();
+		await userProfile.save();
 
 		let user = new User({
 			_id: newUserID,
@@ -131,9 +131,11 @@ async function register(req, res) {
 			notebook: newNotebookID
 		});
 		user = await user.save();
-		await user.populate(['notifications', 'activity', 'events',
-			{ path: 'profile', populate: {path: 'photo'} },
-			{ path: 'profile', populate: {path: 'friends'} }
+		await user.populate(['notifications', 'activity',
+			{ path: 'profile', populate: [
+				{ path: 'friends', populate: { path: 'photo' }},
+				{ path: 'photo' }
+			]}
 		]);
 
 		const token = signToken({ _id: user._id, username: user.username });

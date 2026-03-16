@@ -123,5 +123,32 @@ router.delete('/delete', async(req, res) => {
 });
 
 
+router.put('/password-reset', async(req, res) => {
+	try {
+		const { userID, newPW, adminID, adminPW } = req.body;
+
+		const admin = await User.findById(adminID).select('+password');
+
+		const isMatch = bcrypt.compareSync(adminPW, admin.password);
+			if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
+
+		const newHashed = bcrypt.hashSync(newPW, 12)
+
+		await User.updateOne (
+			{ _id: userID },
+			{ password: newHashed }
+		);
+
+		return res
+			.status(204)
+			.json({ message: "Password Updated" });
+
+	} catch (err) {
+		console.error(err);
+		return res.status(500).json(result)
+	}
+});
+
+
 
 module.exports = router;
