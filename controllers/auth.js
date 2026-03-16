@@ -84,7 +84,7 @@ async function register(req, res) {
 		});
 		newNotebook.save();
 
-		let astramuse = await User.find({ username: 'astramuse' });
+		let astramuse = await User.findOne({ username: 'astramuse' });
 		if (!astramuse) {
 			let botProfile = new UserProfile({
 				_id: new mongoose.Types.ObjectId('69addfabb7089588afdbd825'),

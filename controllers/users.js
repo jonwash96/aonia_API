@@ -196,7 +196,8 @@ async function deleteUser(req, res) {
 		Collection.deleteMany().where('_id').in(user.myPhotos);
 		Document.deleteMany({ ownerID: user._id })
 
-		await User.deleteMany().where('_id').in([user.profile, user.myPhotos, user.notebook]);
+		await User.deleteMany().where('_id').in([user.myPhotos, user.notebook]);
+		await UserProfile.deleteOne({ _id: user.profile});
 		await User.deleteOne({ _id: user._id });
 
 		return res
