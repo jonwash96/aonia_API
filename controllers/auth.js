@@ -181,7 +181,8 @@ async function login(req, res) {
 			.select('+password')
 			.populate('notifications activity events')
 			.populate({path: 'profile', populate: {path: 'photo'}})
-			.populate({path: 'profile', populate: {path: 'friends'}});
+			.populate({path: 'profile', populate: {path: 'friends'}})
+			.lean();
 
 		if (!user) return res.status(401).json({ error: "Invalid credentials" });
 

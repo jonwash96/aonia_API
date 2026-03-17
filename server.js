@@ -5,7 +5,6 @@ require('dotenv').config();
 require('./db/connection.js');
 const cors = require('cors');
 const morgan = require('morgan');
-const testAuthRoutes = require('./controllers/test-jwt')
 const authRoutes = require('./routes/auth')
 const userRoutes = require('./routes/users.js');
 const adminController = require('./controllers/admin');

@@ -38,14 +38,14 @@ async function heliFlush() {
 			continue;
 		};
 		try {
-			if (!chat.messages.length > 0) continue;
-			const messages = new Array(chat.messages);
-			chat.messages = [];
+			if (!chat.messages?.length > 0) continue;
+			const messages = chat.messages;
 			chat['flushed_at'] = Date.now();
 			await Chat.updateOne (
 				{ _id: key },
-				{ push: { messages: { each: messages } } }
+				{ $push: { messages: { $each: messages } } }
 			);
+			chat.messages = [];
 			count++;
 		} catch (err) {
 			console.error("heliFlush Error.", err);
@@ -53,7 +53,7 @@ async function heliFlush() {
 	};
 	helicount++;
 	count === 0 ? helinil++ : helinil = 0;
-	return console.log(`@heliFlush (${helicount}) complete.\n `, count, "chats flushed,\n ", count2, "empty chats removed.\n  Helinil:", helinil);
+	helinil % 10 === 0 && console.log(`@heliFlush (${helicount}) complete.\n `, count, "chats flushed,\n ", count2, "empty chats removed.\n  Helinil:", helinil);
 }
 const rotor = setInterval(heliFlush, 10000);
 
@@ -98,9 +98,9 @@ io.on('connection', socket => {
 	socket.emit('loading', "Retrieving Chats. . .", 1200);
 	new Promise(async (resolve, reject) => {
 		try {
-			const user = await retrieveChats(uid, null, {api:false});
-			if (!user || user.error) {
-				socket.emit('error', `Data retrieval error @ chat server. User not found. ${user.error.message}`, 1500);
+			const dbUser = await retrieveChats(uid, null, {api:false});
+			if (!dbUser || dbUser.error) {
+				socket.emit('error', `Data retrieval error @ chat server. User not found. ${dbUser.error.message}`, 1500);
 				return console.error("No Chat data received for user", uid)
 			};
 			
@@ -109,30 +109,31 @@ io.on('connection', socket => {
 				username: decoded.username,
 				isAdmin: decoded.isAdmin,
 				session: {id: socket.id, join: Date.now()}, 
-				chats: user.chats?.map(c => c._id) || []
+				chats: dbUser.chats?.map(c => c._id) || []
 			};
 
-			if (user.chats?.length === 0) return resolve(socket.emit('chatdata', user.chats));
+			if (dbUser.chats?.length === 0) return resolve(socket.emit('chatdata', dbUser.chats));
 
-			const dbFlushSome = async (user) => {
-				const chats = user.chats;
+			const dbFlushSome = async (dbUser) => {
+				const chats = dbUser.chats;
 				const updates = chats?.map(async (chat,idx) => {
-					console.log("@flushSome. chat in cache:", idx +1);
+					console.log("@flushSome. Chat in cache:", idx +1);
 					const cached = chatsCache[chat._id];
-					if (!cached) return;
+					if (!cached?.messages.length > 0) return;
+					console.log("@flushSome. Flush", cached._id);
 					await Chat.updateOne (
 						{ _id: chat._id },
-						{ push: { messages: { each: cached.messages } } }
+						{ $push: { messages: { $each: cached.messages } } }
 					);
 					chatsCache[chat._id] = [];
 				});
 				try {await Promise.all(updates);
-					user.save();
+					dbUser.save();
 				} catch (err) {throw new Error(err)}
 			};
-			dbFlushSome(user);
+			dbFlushSome(dbUser);
 
-			return resolve(socket.emit('chatdata', user.chats));
+			return resolve(socket.emit('chatdata', dbUser.chats));
 
 		} catch (error) {
 			console.error(error);
@@ -183,9 +184,8 @@ io.on('connection', socket => {
 	});
 
 	socket.on('join-room', (uid, chatID) => {
-		console.log(chatsCache[uid]?.username, "Join room:", chatID);
+		console.log(usersCache[uid]?.username, "Join room:", chatID);
 		socket.join(chatID);
-		// socket.emit('chatdata', findConvo(chatID));
 	});
 
 	socket.on('leave-room', (uid, chatID) => {
